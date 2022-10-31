@@ -42,7 +42,26 @@ class FSTest(TestBase, SchedulerTestBase, AbstractClass):
     """Construct a ProjectTree for the given src path."""
     project_tree = self.mk_fs_tree(ignore_patterns=ignore_patterns)
     with tarfile.open(self._original_src) as tar:
-      tar.extractall(project_tree.build_root)
+      def is_within_directory(directory, target):
+          
+          abs_directory = os.path.abspath(directory)
+          abs_target = os.path.abspath(target)
+      
+          prefix = os.path.commonprefix([abs_directory, abs_target])
+          
+          return prefix == abs_directory
+      
+      def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+      
+          for member in tar.getmembers():
+              member_path = os.path.join(path, member.name)
+              if not is_within_directory(path, member_path):
+                  raise Exception("Attempted Path Traversal in Tar File")
+      
+          tar.extractall(path, members, numeric_owner=numeric_owner) 
+          
+      
+      safe_extract(tar, project_tree.build_root)
     yield project_tree
 
   @staticmethod
